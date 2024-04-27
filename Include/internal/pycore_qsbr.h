@@ -60,7 +60,9 @@ struct _qsbr_thread_state {
 // Padding to avoid false sharing
 struct _qsbr_pad {
     struct _qsbr_thread_state qsbr;
+#ifndef __PIZLONATOR_WAS_HERE__
     char __padding[64 - sizeof(struct _qsbr_thread_state)];
+#endif
 };
 
 // Per-interpreter state

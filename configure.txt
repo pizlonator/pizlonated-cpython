@@ -1,0 +1,1 @@
+CC="xcrun $PWD/../build/bin/clang -g -O" ./configure --with-pydebug --without-mimalloc --without-pymalloc --without-freelists

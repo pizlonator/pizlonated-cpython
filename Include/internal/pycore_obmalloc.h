@@ -178,7 +178,7 @@ typedef unsigned int pymem_uint;  /* assuming >= 16 bits */
 #endif
 #endif
 
-#if !defined(WITH_PYMALLOC_RADIX_TREE)
+#if !defined(WITH_PYMALLOC_RADIX_TREE) && !defined(__PIZLONATOR_WAS_HERE__)
 /* Use radix-tree to track arena memory regions, for address_in_range().
  * Enable by default since it allows larger pool sizes.  Can be disabled
  * using -DWITH_PYMALLOC_RADIX_TREE=0 */

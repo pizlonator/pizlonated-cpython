@@ -92,6 +92,7 @@ typedef long stwodigits; /* signed variant of twodigits */
 
 typedef struct _PyLongValue {
     uintptr_t lv_tag; /* Number of digits, sign and flags */
+    /* FIXME: We could stash a void* here, if there's a capability to be had. */
     digit ob_digit[1];
 } _PyLongValue;
 

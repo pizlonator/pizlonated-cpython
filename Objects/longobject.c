@@ -1320,7 +1320,7 @@ PyLong_FromUnsignedNativeBytes(const void* buffer, size_t n, int flags)
 PyObject *
 PyLong_FromVoidPtr(void *p)
 {
-#if SIZEOF_VOID_P <= SIZEOF_LONG
+#if SIZEOF_VOID_P <= SIZEOF_LONG || defined(__PIZLONATOR_WAS_HERE__)
     return PyLong_FromUnsignedLong((unsigned long)(uintptr_t)p);
 #else
 
@@ -1337,7 +1337,7 @@ PyLong_FromVoidPtr(void *p)
 void *
 PyLong_AsVoidPtr(PyObject *vv)
 {
-#if SIZEOF_VOID_P <= SIZEOF_LONG
+#if SIZEOF_VOID_P <= SIZEOF_LONG || defined(__PIZLONATOR_WAS_HERE__)
     long x;
 
     if (PyLong_Check(vv) && _PyLong_IsNegative((PyLongObject *)vv)) {

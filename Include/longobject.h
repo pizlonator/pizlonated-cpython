@@ -79,6 +79,9 @@ PyLong_AsPid(PyObject *obj)
 #elif defined(SIZEOF_LONG_LONG) && SIZEOF_VOID_P == SIZEOF_LONG_LONG
 #  define _Py_PARSE_INTPTR "L"
 #  define _Py_PARSE_UINTPTR "K"
+#elif defined(__PIZLONATOR_WAS_HERE__)
+#  define _Py_PARSE_INTPTR "l"
+#  define _Py_PARSE_UINTPTR "k"
 #else
 #  error "void* different in size from int, long and long long"
 #endif /* SIZEOF_VOID_P */

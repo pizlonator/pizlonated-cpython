@@ -41,7 +41,7 @@ struct _PyTraceMalloc_Config {
 #endif
 
 struct
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(__PIZLONATOR_WAS_HERE__)
 __attribute__((packed))
 #endif
 tracemalloc_frame {

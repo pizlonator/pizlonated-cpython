@@ -2656,61 +2656,7 @@ for 3 * S extra bytes, and omits the last serialno field.
 static void *
 _PyMem_DebugRawAlloc(int use_calloc, void *ctx, size_t nbytes)
 {
-    debug_alloc_api_t *api = (debug_alloc_api_t *)ctx;
-    uint8_t *p;           /* base address of malloc'ed pad block */
-    uint8_t *data;        /* p + 2*SST == pointer to data bytes */
-    uint8_t *tail;        /* data + nbytes == pointer to tail pad bytes */
-    size_t total;         /* nbytes + PYMEM_DEBUG_EXTRA_BYTES */
-
-    if (nbytes > (size_t)PY_SSIZE_T_MAX - PYMEM_DEBUG_EXTRA_BYTES) {
-        /* integer overflow: can't represent total as a Py_ssize_t */
-        return NULL;
-    }
-    total = nbytes + PYMEM_DEBUG_EXTRA_BYTES;
-
-    /* Layout: [SSSS IFFF CCCC...CCCC FFFF NNNN]
-                ^--- p    ^--- data   ^--- tail
-       S: nbytes stored as size_t
-       I: API identifier (1 byte)
-       F: Forbidden bytes (size_t - 1 bytes before, size_t bytes after)
-       C: Clean bytes used later to store actual data
-       N: Serial number stored as size_t
-
-       If PYMEM_DEBUG_SERIALNO is not defined (default), the last NNNN field
-       is omitted. */
-
-    if (use_calloc) {
-        p = (uint8_t *)api->alloc.calloc(api->alloc.ctx, 1, total);
-    }
-    else {
-        p = (uint8_t *)api->alloc.malloc(api->alloc.ctx, total);
-    }
-    if (p == NULL) {
-        return NULL;
-    }
-    data = p + 2*SST;
-
-#ifdef PYMEM_DEBUG_SERIALNO
-    bumpserialno();
-#endif
-
-    /* at p, write size (SST bytes), id (1 byte), pad (SST-1 bytes) */
-    write_size_t(p, nbytes);
-    p[SST] = (uint8_t)api->api_id;
-    memset(p + SST + 1, PYMEM_FORBIDDENBYTE, SST-1);
-
-    if (nbytes > 0 && !use_calloc) {
-        fill_mem_debug(api, data, PYMEM_CLEANBYTE, nbytes, true);
-    }
-
-    /* at tail, write pad (SST bytes) and serialno (SST bytes) */
-    tail = data + nbytes;
-    memset(tail, PYMEM_FORBIDDENBYTE, SST);
-#ifdef PYMEM_DEBUG_SERIALNO
-    write_size_t(tail + SST, serialno);
-#endif
-
-    return data;
+    return malloc(nbytes);
 }
 
 void *
@@ -2737,126 +2683,14 @@ _PyMem_DebugRawCalloc(void *ctx, size_t nelem, size_t elsize)
 void
 _PyMem_DebugRawFree(void *ctx, void *p)
 {
-    /* PyMem_Free(NULL) has no effect */
-    if (p == NULL) {
-        return;
-    }
-
-    debug_alloc_api_t *api = (debug_alloc_api_t *)ctx;
-    uint8_t *q = (uint8_t *)p - 2*SST;  /* address returned from malloc */
-    size_t nbytes;
-
-    _PyMem_DebugCheckAddress(__func__, api->api_id, p);
-    nbytes = read_size_t(q);
-    nbytes += PYMEM_DEBUG_EXTRA_BYTES - 2*SST;
-    memset(q, PYMEM_DEADBYTE, 2*SST);
-    fill_mem_debug(api, p, PYMEM_DEADBYTE, nbytes, false);
-    api->alloc.free(api->alloc.ctx, q);
+    free(p);
 }
 
 
 void *
 _PyMem_DebugRawRealloc(void *ctx, void *p, size_t nbytes)
 {
-    if (p == NULL) {
-        return _PyMem_DebugRawAlloc(0, ctx, nbytes);
-    }
-
-    debug_alloc_api_t *api = (debug_alloc_api_t *)ctx;
-    uint8_t *head;        /* base address of malloc'ed pad block */
-    uint8_t *data;        /* pointer to data bytes */
-    uint8_t *r;
-    uint8_t *tail;        /* data + nbytes == pointer to tail pad bytes */
-    size_t total;         /* 2 * SST + nbytes + 2 * SST */
-    size_t original_nbytes;
-#define ERASED_SIZE 64
-
-    _PyMem_DebugCheckAddress(__func__, api->api_id, p);
-
-    data = (uint8_t *)p;
-    head = data - 2*SST;
-    original_nbytes = read_size_t(head);
-    if (nbytes > (size_t)PY_SSIZE_T_MAX - PYMEM_DEBUG_EXTRA_BYTES) {
-        /* integer overflow: can't represent total as a Py_ssize_t */
-        return NULL;
-    }
-    total = nbytes + PYMEM_DEBUG_EXTRA_BYTES;
-
-    tail = data + original_nbytes;
-#ifdef PYMEM_DEBUG_SERIALNO
-    size_t block_serialno = read_size_t(tail + SST);
-#endif
-#ifndef Py_GIL_DISABLED
-    /* Mark the header, the trailer, ERASED_SIZE bytes at the begin and
-       ERASED_SIZE bytes at the end as dead and save the copy of erased bytes.
-     */
-    uint8_t save[2*ERASED_SIZE];  /* A copy of erased bytes. */
-    if (original_nbytes <= sizeof(save)) {
-        memcpy(save, data, original_nbytes);
-        memset(data - 2 * SST, PYMEM_DEADBYTE,
-               original_nbytes + PYMEM_DEBUG_EXTRA_BYTES);
-    }
-    else {
-        memcpy(save, data, ERASED_SIZE);
-        memset(head, PYMEM_DEADBYTE, ERASED_SIZE + 2 * SST);
-        memcpy(&save[ERASED_SIZE], tail - ERASED_SIZE, ERASED_SIZE);
-        memset(tail - ERASED_SIZE, PYMEM_DEADBYTE,
-               ERASED_SIZE + PYMEM_DEBUG_EXTRA_BYTES - 2 * SST);
-    }
-#endif
-
-    /* Resize and add decorations. */
-    r = (uint8_t *)api->alloc.realloc(api->alloc.ctx, head, total);
-    if (r == NULL) {
-        /* if realloc() failed: rewrite header and footer which have
-           just been erased */
-        nbytes = original_nbytes;
-    }
-    else {
-        head = r;
-#ifdef PYMEM_DEBUG_SERIALNO
-        bumpserialno();
-        block_serialno = serialno;
-#endif
-    }
-    data = head + 2*SST;
-
-    write_size_t(head, nbytes);
-    head[SST] = (uint8_t)api->api_id;
-    memset(head + SST + 1, PYMEM_FORBIDDENBYTE, SST-1);
-
-    tail = data + nbytes;
-    memset(tail, PYMEM_FORBIDDENBYTE, SST);
-#ifdef PYMEM_DEBUG_SERIALNO
-    write_size_t(tail + SST, block_serialno);
-#endif
-
-#ifndef Py_GIL_DISABLED
-    /* Restore saved bytes. */
-    if (original_nbytes <= sizeof(save)) {
-        memcpy(data, save, Py_MIN(nbytes, original_nbytes));
-    }
-    else {
-        size_t i = original_nbytes - ERASED_SIZE;
-        memcpy(data, save, Py_MIN(nbytes, ERASED_SIZE));
-        if (nbytes > i) {
-            memcpy(data + i, &save[ERASED_SIZE],
-                   Py_MIN(nbytes - i, ERASED_SIZE));
-        }
-    }
-#endif
-
-    if (r == NULL) {
-        return NULL;
-    }
-
-    if (nbytes > original_nbytes) {
-        /* growing: mark new extra memory clean */
-        memset(data + original_nbytes, PYMEM_CLEANBYTE,
-               nbytes - original_nbytes);
-    }
-
-    return data;
+    return realloc(p, nbytes);
 }
 
 static inline void

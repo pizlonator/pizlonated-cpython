@@ -60,6 +60,7 @@ typedef struct {
             uint16_t error_target;
         };
     };
+    /* FIXME: This should almost certainly be a void*. */
     uint64_t operand;  // A cache entry
 } _PyUOpInstruction;
 

@@ -60,7 +60,7 @@
  * Format codes
  */
 
-#if SIZEOF_VOID_P == SIZEOF_LONG
+#if SIZEOF_VOID_P == SIZEOF_LONG || defined(__PIZLONATOR_WAS_HERE__)
 #  define F_POINTER "k"
 #  define T_POINTER T_ULONG
 #elif SIZEOF_VOID_P == SIZEOF_LONG_LONG

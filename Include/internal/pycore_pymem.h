@@ -89,7 +89,9 @@ extern int _PyMem_SetDefaultAllocator(
 static inline int _PyMem_IsPtrFreed(const void *ptr)
 {
     uintptr_t value = (uintptr_t)ptr;
-#if SIZEOF_VOID_P == 8
+#ifdef __PIZLONATOR_WAS_HERE__
+    return 0;
+#elif SIZEOF_VOID_P == 8
     return (value == 0
             || value == (uintptr_t)0xCDCDCDCDCDCDCDCD
             || value == (uintptr_t)0xDDDDDDDDDDDDDDDD

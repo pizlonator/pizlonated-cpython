@@ -10,7 +10,9 @@ static inline Py_hash_t
 _Py_HashPointerRaw(const void *ptr)
 {
     uintptr_t x = (uintptr_t)ptr;
+#ifndef __PIZLONATOR_WAS_HERE__
     Py_BUILD_ASSERT(sizeof(x) == sizeof(ptr));
+#endif
 
     // Bottom 3 or 4 bits are likely to be 0; rotate x by 4 to the right
     // to avoid excessive hash collisions for dicts and sets.

@@ -323,7 +323,7 @@ static inline void _PyObject_GC_TRACK(
 #else
     PyGC_Head *gc = _Py_AS_GC(op);
     _PyObject_ASSERT_FROM(op,
-                          (gc->_gc_prev & _PyGC_PREV_MASK_COLLECTING) == 0,
+                          ((uintptr_t)gc->_gc_prev & _PyGC_PREV_MASK_COLLECTING) == 0,
                           "object is in generation which is garbage collected",
                           filename, lineno, __func__);
 
@@ -333,8 +333,8 @@ static inline void _PyObject_GC_TRACK(
     _PyGCHead_SET_NEXT(last, gc);
     _PyGCHead_SET_PREV(gc, last);
     /* Young objects will be moved into the visited space during GC, so set the bit here */
-    gc->_gc_next = ((uintptr_t)generation0) | interp->gc.visited_space;
-    generation0->_gc_prev = (uintptr_t)gc;
+    gc->_gc_next = zorptr(generation0, interp->gc.visited_space);
+    generation0->_gc_prev = gc;
 #endif
 }
 
@@ -368,7 +368,7 @@ static inline void _PyObject_GC_UNTRACK(
     _PyGCHead_SET_NEXT(prev, next);
     _PyGCHead_SET_PREV(next, prev);
     gc->_gc_next = 0;
-    gc->_gc_prev &= _PyGC_PREV_MASK_FINALIZED;
+    gc->_gc_prev = zandptr(gc->_gc_prev, _PyGC_PREV_MASK_FINALIZED);
 #endif
 }
 
