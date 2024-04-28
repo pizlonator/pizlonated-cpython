@@ -355,7 +355,7 @@ _Py_atomic_load_ssize_relaxed(const Py_ssize_t *obj)
 
 static inline void *
 _Py_atomic_load_ptr_relaxed(const void *obj)
-{ return (void *)__atomic_load_n((const void **)obj, __ATOMIC_RELAXED); }
+{ return zunfenced_atomic_load_ptr((const void **)obj); }
 
 static inline unsigned long long
 _Py_atomic_load_ullong_relaxed(const unsigned long long *obj)

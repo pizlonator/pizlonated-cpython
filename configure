@@ -12991,7 +12991,8 @@ then
 	Linux*|GNU*) LINKFORSHARED="-Xlinker -export-dynamic";;
 	# -u libsys_s pulls in all symbols in libsys
 	Darwin/*|iOS/*)
-		LINKFORSHARED="$extra_undefs -framework CoreFoundation"
+		#LINKFORSHARED="$extra_undefs -framework CoreFoundation"
+		LINKFORSHARED="$extra_undefs"
 
 		# Issue #18075: the default maximum stack size (8MBytes) is too
 		# small for the default recursion limit. Increase the stack size
@@ -28533,6 +28534,7 @@ else $as_nop
 
 // pyatomic.h needs uint64_t and Py_ssize_t types
 #include <stdint.h>  // int64_t, intptr_t
+#include <stdfil.h>
 #ifdef HAVE_SYS_TYPES_H
 #  include <sys/types.h> // ssize_t
 #endif

@@ -112,8 +112,8 @@ As a consequence of this, split keys have a maximum size of 16.
  * Making this 8, rather than 4 reduces the number of resizes for most
  * dictionaries, without any significant extra memory use.
  */
-#define PyDict_LOG_MINSIZE 3
-#define PyDict_MINSIZE 8
+#define PyDict_LOG_MINSIZE 4
+#define PyDict_MINSIZE 16
 
 #include "Python.h"
 #include "pycore_bitutils.h"             // _Py_bit_length
