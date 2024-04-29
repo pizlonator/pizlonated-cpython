@@ -368,8 +368,10 @@ struct _expr {
     enum _expr_kind kind;
     union {
         struct {
-            boolop_ty op;
             asdl_expr_seq *values;
+            void *pad1;
+            void *pad2;
+            boolop_ty op;
         } BoolOp;
 
         struct {
@@ -379,13 +381,16 @@ struct _expr {
 
         struct {
             expr_ty left;
-            operator_ty op;
             expr_ty right;
+            void *pad;
+            operator_ty op;
         } BinOp;
 
         struct {
-            unaryop_ty op;
             expr_ty operand;
+            void *pad1;
+            void *pad2;
+            unaryop_ty op;
         } UnaryOp;
 
         struct {
@@ -455,8 +460,9 @@ struct _expr {
 
         struct {
             expr_ty value;
-            int conversion;
             expr_ty format_spec;
+            void *pad;
+            int conversion;
         } FormattedValue;
 
         struct {
@@ -471,32 +477,42 @@ struct _expr {
         struct {
             expr_ty value;
             identifier attr;
+            void *pad;
             expr_context_ty ctx;
         } Attribute;
 
         struct {
             expr_ty value;
             expr_ty slice;
+            void *pad;
             expr_context_ty ctx;
         } Subscript;
 
         struct {
             expr_ty value;
+            void *pad1;
+            void *pad2;
             expr_context_ty ctx;
         } Starred;
 
         struct {
             identifier id;
+            void *pad1;
+            void *pad2;
             expr_context_ty ctx;
         } Name;
 
         struct {
             asdl_expr_seq *elts;
+            void *pad1;
+            void *pad2;
             expr_context_ty ctx;
         } List;
 
         struct {
             asdl_expr_seq *elts;
+            void *pad1;
+            void *pad2;
             expr_context_ty ctx;
         } Tuple;
 
