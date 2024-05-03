@@ -14,6 +14,14 @@
 #include "pycore_tuple.h"         // _PyTuple_ITEMS()
 #include "clinic/codeobject.c.h"
 
+zptrtable* _PyCode_PtrTable;
+
+static void construct_ptrtable(void) __attribute__((constructor));
+static void construct_ptrtable(void)
+{
+    _PyCode_PtrTable = zptrtable_new();
+}
+
 static const char *
 code_event_name(PyCodeEvent event) {
     switch (event) {

@@ -293,6 +293,8 @@ extern void _PyStaticCode_Fini(PyCodeObject *co);
 /* Function to intern strings of codeobjects and quicken the bytecode */
 extern int _PyStaticCode_Init(PyCodeObject *co);
 
+extern zptrtable* _PyCode_PtrTable;
+
 #ifdef Py_STATS
 
 #include "pycore_bitutils.h"  // _Py_bit_length
@@ -375,7 +377,8 @@ write_u64(uint16_t *p, uint64_t val)
 static inline void
 write_obj(uint16_t *p, PyObject *val)
 {
-    memcpy(p, &val, sizeof(val));
+    uintptr_t valint = zptrtable_encode(_PyCode_PtrTable, val);
+    memcpy(p, &valint, sizeof(valint));
 }
 
 static inline uint16_t
@@ -403,9 +406,9 @@ read_u64(uint16_t *p)
 static inline PyObject *
 read_obj(uint16_t *p)
 {
-    PyObject *val;
+    uintptr_t val;
     memcpy(&val, p, sizeof(val));
-    return val;
+    return zptrtable_decode(_PyCode_PtrTable, val);
 }
 
 /* See Objects/exception_handling_notes.txt for details.

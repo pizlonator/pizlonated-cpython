@@ -56,6 +56,7 @@ enum _frameowner {
 
 typedef struct _PyInterpreterFrame {
     PyObject *f_executable; /* Strong reference (code object or None) */
+    struct _PyInterpreterFrame *_f_caller_frame;
     struct _PyInterpreterFrame *previous;
     PyObject *f_funcobj; /* Strong reference. Only valid if not on C stack */
     PyObject *f_globals; /* Borrowed reference. Only valid if not on C stack */
@@ -244,13 +245,7 @@ _PyFrame_LocalsToFast(_PyInterpreterFrame *frame, int clear);
 static inline bool
 _PyThreadState_HasStackSpace(PyThreadState *tstate, int size)
 {
-    assert(
-        (tstate->datastack_top == NULL && tstate->datastack_limit == NULL)
-        ||
-        (tstate->datastack_top != NULL && tstate->datastack_limit != NULL)
-    );
-    return tstate->datastack_top != NULL &&
-        size < tstate->datastack_limit - tstate->datastack_top;
+    return true;
 }
 
 extern _PyInterpreterFrame *
@@ -266,9 +261,7 @@ _PyFrame_PushUnchecked(PyThreadState *tstate, PyFunctionObject *func, int null_l
 {
     CALL_STAT_INC(frames_pushed);
     PyCodeObject *code = (PyCodeObject *)func->func_code;
-    _PyInterpreterFrame *new_frame = (_PyInterpreterFrame *)tstate->datastack_top;
-    tstate->datastack_top += code->co_framesize;
-    assert(tstate->datastack_top < tstate->datastack_limit);
+    _PyInterpreterFrame *new_frame = _PyThreadState_PushFrame(tstate, code->co_framesize);
     _PyFrame_Initialize(new_frame, func, NULL, code, null_locals_from);
     return new_frame;
 }
@@ -279,9 +272,7 @@ static inline _PyInterpreterFrame *
 _PyFrame_PushTrampolineUnchecked(PyThreadState *tstate, PyCodeObject *code, int stackdepth)
 {
     CALL_STAT_INC(frames_pushed);
-    _PyInterpreterFrame *frame = (_PyInterpreterFrame *)tstate->datastack_top;
-    tstate->datastack_top += code->co_framesize;
-    assert(tstate->datastack_top < tstate->datastack_limit);
+    _PyInterpreterFrame *frame = _PyThreadState_PushFrame(tstate, code->co_framesize);
     frame->f_funcobj = Py_None;
     frame->f_executable = Py_NewRef(code);
 #ifdef Py_DEBUG

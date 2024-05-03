@@ -167,9 +167,7 @@ struct _ts {
     /* Unique thread state id. */
     uint64_t id;
 
-    _PyStackChunk *datastack_chunk;
-    PyObject **datastack_top;
-    PyObject **datastack_limit;
+    struct _PyInterpreterFrame *datastack_top_frame;
     /* XXX signal handlers should also be here */
 
     /* The following fields are here to avoid allocation during init.
