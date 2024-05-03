@@ -18,8 +18,7 @@ extern "C" {
 
 
 struct _frame {
-    PyObject_HEAD
-    int _varobject_padding;
+    PyObject_VAR_HEAD
     PyFrameObject *f_back;      /* previous frame, or NULL */
     struct _PyInterpreterFrame *f_frame; /* points to the frame data */
     PyObject *f_trace;          /* Trace function */
