@@ -402,34 +402,36 @@ do { \
     alloc_pos = state->data_stack_base; \
     TRACE(("allocating %s in %zd (%zd)\n", \
            Py_STRINGIFY(type), alloc_pos, sizeof(type))); \
-    if (sizeof(type) > state->data_stack_size - alloc_pos) { \
-        int j = data_stack_grow(state, sizeof(type)); \
+    if (alloc_pos >= state->data_stack_size) { \
+        int j = data_stack_grow(state); \
         if (j < 0) return j; \
         if (ctx_pos != -1) \
             DATA_STACK_LOOKUP_AT(state, SRE(match_context), ctx, ctx_pos); \
     } \
-    ptr = (type*)(state->data_stack+alloc_pos); \
-    state->data_stack_base += sizeof(type); \
+    state->data_stack_ptrs[alloc_pos] = zalloc(sizeof(type)); \
+    ptr = (type*)(state->data_stack_ptrs[alloc_pos]); \
+    state->data_stack_base++; \
 } while (0)
 
 #define DATA_STACK_LOOKUP_AT(state, type, ptr, pos) \
 do { \
     TRACE(("looking up %s at %zd\n", Py_STRINGIFY(type), pos)); \
-    ptr = (type*)(state->data_stack+pos); \
+    ptr = (type*)(state->data_stack_ptrs[pos]); \
 } while (0)
 
 #define DATA_STACK_PUSH(state, data, size) \
 do { \
     TRACE(("copy data in %p to %zd (%zd)\n", \
            data, state->data_stack_base, size)); \
-    if (size > state->data_stack_size - state->data_stack_base) { \
-        int j = data_stack_grow(state, size); \
+    if (state->data_stack_base >= state->data_stack_size) { \
+        int j = data_stack_grow(state); \
         if (j < 0) return j; \
         if (ctx_pos != -1) \
             DATA_STACK_LOOKUP_AT(state, SRE(match_context), ctx, ctx_pos); \
     } \
-    memcpy(state->data_stack+state->data_stack_base, data, size); \
-    state->data_stack_base += size; \
+    state->data_stack_ptrs[state->data_stack_base] = zalloc(size); \
+    memcpy(state->data_stack_ptrs[state->data_stack_base], data, size); \
+    state->data_stack_base++; \
 } while (0)
 
 /* We add an explicit cast to memcpy here because MSVC has a bug when
@@ -439,16 +441,16 @@ do { \
 do { \
     TRACE(("copy data to %p from %zd (%zd)\n", \
            data, state->data_stack_base-size, size)); \
-    memcpy((void*) data, state->data_stack+state->data_stack_base-size, size); \
+    memcpy((void*) data, state->data_stack_ptrs[state->data_stack_base-1], size); \
     if (discard) \
-        state->data_stack_base -= size; \
+        state->data_stack_base--; \
 } while (0)
 
 #define DATA_STACK_POP_DISCARD(state, size) \
 do { \
     TRACE(("discard data from %zd (%zd)\n", \
            state->data_stack_base-size, size)); \
-    state->data_stack_base -= size; \
+    state->data_stack_base--; \
 } while(0)
 
 #define DATA_PUSH(x) \

@@ -238,30 +238,30 @@ char_loc_ignore(SRE_CODE pattern, SRE_CODE ch)
 static void
 data_stack_dealloc(SRE_STATE* state)
 {
-    if (state->data_stack) {
-        PyMem_Free(state->data_stack);
-        state->data_stack = NULL;
+    if (state->data_stack_ptrs) {
+        PyMem_Free(state->data_stack_ptrs);
+        state->data_stack_ptrs = NULL;
     }
     state->data_stack_size = state->data_stack_base = 0;
 }
 
 static int
-data_stack_grow(SRE_STATE* state, Py_ssize_t size)
+data_stack_grow(SRE_STATE* state)
 {
     INIT_TRACE(state);
     Py_ssize_t minsize, cursize;
-    minsize = state->data_stack_base+size;
+    minsize = state->data_stack_base+1;
     cursize = state->data_stack_size;
     if (cursize < minsize) {
-        void* stack;
-        cursize = minsize+minsize/4+1024;
+        void** stack;
+        cursize = minsize+minsize/4+64;
         TRACE(("allocate/grow stack %zd\n", cursize));
-        stack = PyMem_Realloc(state->data_stack, cursize);
+        stack = PyMem_Realloc(state->data_stack_ptrs, cursize * sizeof(void*));
         if (!stack) {
             data_stack_dealloc(state);
             return SRE_ERROR_MEMORY;
         }
-        state->data_stack = (char *)stack;
+        state->data_stack_ptrs = (char *)stack;
         state->data_stack_size = cursize;
     }
     return 0;

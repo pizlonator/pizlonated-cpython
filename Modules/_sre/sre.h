@@ -90,7 +90,7 @@ typedef struct {
     int lastindex;
     const void** mark;
     /* dynamically allocated stuff */
-    char* data_stack;
+    void** data_stack_ptrs;
     size_t data_stack_size;
     size_t data_stack_base;
     /* current repeat context */
