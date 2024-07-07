@@ -408,7 +408,7 @@ do { \
         if (ctx_pos != -1) \
             DATA_STACK_LOOKUP_AT(state, SRE(match_context), ctx, ctx_pos); \
     } \
-    state->data_stack_ptrs[alloc_pos] = zalloc(sizeof(type)); \
+    state->data_stack_ptrs[alloc_pos] = zgc_alloc(sizeof(type)); \
     ptr = (type*)(state->data_stack_ptrs[alloc_pos]); \
     state->data_stack_base++; \
 } while (0)
@@ -429,7 +429,7 @@ do { \
         if (ctx_pos != -1) \
             DATA_STACK_LOOKUP_AT(state, SRE(match_context), ctx, ctx_pos); \
     } \
-    state->data_stack_ptrs[state->data_stack_base] = zalloc(size); \
+    state->data_stack_ptrs[state->data_stack_base] = zgc_alloc(size); \
     memcpy(state->data_stack_ptrs[state->data_stack_base], data, size); \
     state->data_stack_base++; \
 } while (0)

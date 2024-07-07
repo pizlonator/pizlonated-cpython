@@ -2853,7 +2853,7 @@ _PyInterpreterFrame *
 _PyThreadState_PushFrame(PyThreadState *tstate, size_t size)
 {
     assert(size < INT_MAX/sizeof(PyObject *));
-    _PyInterpreterFrame *result = (_PyInterpreterFrame *)zalloc(size * sizeof(PyObject *));
+    _PyInterpreterFrame *result = (_PyInterpreterFrame *)zgc_alloc(size * sizeof(PyObject *));
     result->_f_caller_frame = tstate->datastack_top_frame;
     tstate->datastack_top_frame = result;
     return result;
