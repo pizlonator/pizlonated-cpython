@@ -2638,7 +2638,8 @@ def _proxy_bypass_winreg_override(host, override):
     return False
 
 
-if sys.platform == 'darwin':
+# HACK: We disable _scproxy on Mac because we cannot call Mac native functions anyway.
+if sys.platform == 'darwin_':
     from _scproxy import _get_proxy_settings, _get_proxies
 
     def proxy_bypass_macosx_sysconf(host):
