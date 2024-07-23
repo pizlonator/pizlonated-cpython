@@ -13,6 +13,8 @@
 #  include <sys/time.h>           // gettimeofday()
 #endif
 
+#include <stdfil.h>
+
 #ifdef HAVE_MP_SEMAPHORE
 
 enum { RECURSIVE_MUTEX, SEMAPHORE };
@@ -213,23 +215,47 @@ _multiprocessing_SemLock_release_impl(SemLockObject *self)
 
 #else /* !MS_WINDOWS */
 
-/*
- * Unix definitions
- */
-
-#define SEM_CLEAR_ERROR()
-#define SEM_GET_LAST_ERROR() 0
-#define SEM_CREATE(name, val, max) sem_open(name, O_CREAT | O_EXCL, 0600, val)
-#define SEM_CLOSE(sem) sem_close(sem)
-#define SEM_GETVALUE(sem, pval) sem_getvalue(sem, pval)
-#define SEM_UNLINK(name) sem_unlink(name)
-
 /* OS X 10.4 defines SEM_FAILED as -1 instead of (sem_t *)-1;  this gives
    compiler warnings, and (potentially) undefined behaviour. */
 #ifdef __APPLE__
 #  undef SEM_FAILED
 #  define SEM_FAILED ((sem_t *)-1)
 #endif
+
+#define ENCODED_SEM_FAILED ((unsigned long)(long)-1)
+
+static zptrtable* sem_ptr_table;
+
+static void construct_ptrtable(void) __attribute__((constructor));
+static void construct_ptrtable(void)
+{
+    sem_ptr_table = zptrtable_new();
+}
+
+static sem_t* decode_sem(SEM_HANDLE handle)
+{
+    if (handle == ENCODED_SEM_FAILED)
+        return SEM_FAILED;
+    return zptrtable_decode(sem_ptr_table, handle);
+}
+
+static SEM_HANDLE encode_sem(sem_t *sem)
+{
+    if (sem == SEM_FAILED)
+        return ENCODED_SEM_FAILED;
+    return zptrtable_encode(sem_ptr_table, sem);
+}
+
+/*
+ * Unix definitions
+ */
+
+#define SEM_CLEAR_ERROR()
+#define SEM_GET_LAST_ERROR() 0
+#define SEM_CREATE(name, val, max) encode_sem(sem_open(name, O_CREAT | O_EXCL, 0600, val))
+#define SEM_CLOSE(sem) sem_close(decode_sem(sem))
+#define SEM_GETVALUE(sem, pval) sem_getvalue(decode_sem(sem), pval)
+#define SEM_UNLINK(name) sem_unlink(name)
 
 #ifndef HAVE_SEM_UNLINK
 #  define sem_unlink(name) 0
@@ -346,7 +372,7 @@ _multiprocessing_SemLock_acquire_impl(SemLockObject *self, int blocking,
 
     /* Check whether we can acquire without releasing the GIL and blocking */
     do {
-        res = sem_trywait(self->handle);
+        res = sem_trywait(decode_sem(self->handle));
         err = errno;
     } while (res < 0 && errno == EINTR && !PyErr_CheckSignals());
     errno = err;
@@ -356,10 +382,10 @@ _multiprocessing_SemLock_acquire_impl(SemLockObject *self, int blocking,
         do {
             Py_BEGIN_ALLOW_THREADS
             if (!use_deadline) {
-                res = sem_wait(self->handle);
+                res = sem_wait(decode_sem(self->handle));
             }
             else {
-                res = sem_timedwait(self->handle, &deadline);
+                res = sem_timedwait(decode_sem(self->handle), &deadline);
             }
             Py_END_ALLOW_THREADS
             err = errno;
@@ -412,7 +438,7 @@ _multiprocessing_SemLock_release_impl(SemLockObject *self)
         /* We will only check properly the maxvalue == 1 case */
         if (self->maxvalue == 1) {
             /* make sure that already locked */
-            if (sem_trywait(self->handle) < 0) {
+            if (sem_trywait(decode_sem(self->handle)) < 0) {
                 if (errno != EAGAIN) {
                     PyErr_SetFromErrno(PyExc_OSError);
                     return NULL;
@@ -420,7 +446,7 @@ _multiprocessing_SemLock_release_impl(SemLockObject *self)
                 /* it is already locked as expected */
             } else {
                 /* it was not locked so undo wait and raise  */
-                if (sem_post(self->handle) < 0) {
+                if (sem_post(decode_sem(self->handle)) < 0) {
                     PyErr_SetFromErrno(PyExc_OSError);
                     return NULL;
                 }
@@ -435,7 +461,7 @@ _multiprocessing_SemLock_release_impl(SemLockObject *self)
 
         /* This check is not an absolute guarantee that the semaphore
            does not rise above maxvalue. */
-        if (sem_getvalue(self->handle, &sval) < 0) {
+        if (sem_getvalue(decode_sem(self->handle), &sval) < 0) {
             return PyErr_SetFromErrno(PyExc_OSError);
         } else if (sval >= self->maxvalue) {
             PyErr_SetString(PyExc_ValueError, "semaphore or lock "
@@ -445,7 +471,7 @@ _multiprocessing_SemLock_release_impl(SemLockObject *self)
 #endif
     }
 
-    if (sem_post(self->handle) < 0)
+    if (sem_post(decode_sem(self->handle)) < 0)
         return PyErr_SetFromErrno(PyExc_OSError);
 
     --self->count;
@@ -491,7 +517,7 @@ _multiprocessing_SemLock_impl(PyTypeObject *type, int kind, int value,
                               int maxvalue, const char *name, int unlink)
 /*[clinic end generated code: output=30727e38f5f7577a input=fdaeb69814471c5b]*/
 {
-    SEM_HANDLE handle = SEM_FAILED;
+    SEM_HANDLE handle = ENCODED_SEM_FAILED;
     PyObject *result;
     char *name_copy = NULL;
 
@@ -511,7 +537,7 @@ _multiprocessing_SemLock_impl(PyTypeObject *type, int kind, int value,
     SEM_CLEAR_ERROR();
     handle = SEM_CREATE(name, value, maxvalue);
     /* On Windows we should fail if GetLastError()==ERROR_ALREADY_EXISTS */
-    if (handle == SEM_FAILED || SEM_GET_LAST_ERROR() != 0)
+    if (handle == ENCODED_SEM_FAILED || SEM_GET_LAST_ERROR() != 0)
         goto failure;
 
     if (unlink && SEM_UNLINK(name) < 0)
@@ -527,7 +553,7 @@ _multiprocessing_SemLock_impl(PyTypeObject *type, int kind, int value,
     if (!PyErr_Occurred()) {
         _PyMp_SetError(NULL, MP_STANDARD_ERROR);
     }
-    if (handle != SEM_FAILED)
+    if (handle != ENCODED_SEM_FAILED)
         SEM_CLOSE(handle);
     PyMem_Free(name_copy);
     return NULL;
@@ -562,8 +588,8 @@ _multiprocessing_SemLock__rebuild_impl(PyTypeObject *type, SEM_HANDLE handle,
 
 #ifndef MS_WINDOWS
     if (name != NULL) {
-        handle = sem_open(name, 0);
-        if (handle == SEM_FAILED) {
+        handle = encode_sem(sem_open(name, 0));
+        if (handle == ENCODED_SEM_FAILED) {
             PyErr_SetFromErrno(PyExc_OSError);
             PyMem_Free(name_copy);
             return NULL;
@@ -579,7 +605,7 @@ semlock_dealloc(SemLockObject* self)
 {
     PyTypeObject *tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
-    if (self->handle != SEM_FAILED)
+    if (self->handle != ENCODED_SEM_FAILED)
         SEM_CLOSE(self->handle);
     PyMem_Free(self->name);
     tp->tp_free(self);
@@ -650,12 +676,12 @@ _multiprocessing_SemLock__is_zero_impl(SemLockObject *self)
 /*[clinic end generated code: output=815d4c878c806ed7 input=294a446418d31347]*/
 {
 #ifdef HAVE_BROKEN_SEM_GETVALUE
-    if (sem_trywait(self->handle) < 0) {
+    if (sem_trywait(decode_sem(self->handle)) < 0) {
         if (errno == EAGAIN)
             Py_RETURN_TRUE;
         return _PyMp_SetError(NULL, MP_STANDARD_ERROR);
     } else {
-        if (sem_post(self->handle) < 0)
+        if (sem_post(decode_sem(self->handle)) < 0)
             return _PyMp_SetError(NULL, MP_STANDARD_ERROR);
         Py_RETURN_FALSE;
     }

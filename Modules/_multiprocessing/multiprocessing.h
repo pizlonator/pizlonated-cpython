@@ -36,7 +36,7 @@
 #  if defined(HAVE_SEM_OPEN) && !defined(POSIX_SEMAPHORES_NOT_ENABLED)
 #    define HAVE_MP_SEMAPHORE
 #    include <semaphore.h>
-     typedef sem_t *SEM_HANDLE;
+     typedef unsigned long SEM_HANDLE;
 #  endif
 #endif
 
@@ -60,15 +60,8 @@
  * Format codes
  */
 
-#if SIZEOF_VOID_P == SIZEOF_LONG || defined(__PIZLONATOR_WAS_HERE__)
 #  define F_POINTER "k"
 #  define T_POINTER T_ULONG
-#elif SIZEOF_VOID_P == SIZEOF_LONG_LONG
-#  define F_POINTER "K"
-#  define T_POINTER T_ULONGLONG
-#else
-#  error "can't find format code for unsigned integer of same size as void*"
-#endif
 
 #ifdef MS_WINDOWS
 #  define F_HANDLE F_POINTER
