@@ -12,7 +12,7 @@
 */
 
 #define DEFAULT_BLOCK_SIZE 8192
-#define ALIGNMENT               16
+#define ALIGNMENT               8
 
 typedef struct _block {
     /* Total number of bytes owned by this block available to pass out.
