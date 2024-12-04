@@ -1,5 +1,7 @@
 #ifndef Py_OBJECT_H
 #define Py_OBJECT_H
+#include <stdfil.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -416,6 +418,8 @@ static inline void Py_SET_REFCNT(PyObject *ob, Py_ssize_t refcnt) {
 
 
 static inline void Py_SET_TYPE(PyObject *ob, PyTypeObject *type) {
+    ZASSERT(zhasvalidcap(type));
+    ZASSERT(zinbounds(type));
     ob->ob_type = type;
 }
 #if !defined(Py_LIMITED_API) || Py_LIMITED_API+0 < 0x030b0000
