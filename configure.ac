@@ -3619,11 +3619,7 @@ AC_MSG_RESULT([$SHLIBS])
 dnl perf trampoline is Linux specific and requires an arch-specific
 dnl trampoline in asssembly.
 AC_MSG_CHECKING([perf trampoline])
-AS_CASE([$PLATFORM_TRIPLET],
-  [x86_64-linux-gnu], [perf_trampoline=yes],
-  [aarch64-linux-gnu], [perf_trampoline=yes],
-  [perf_trampoline=no]
-)
+perf_trampoline=no
 AC_MSG_RESULT([$perf_trampoline])
 
 AS_VAR_IF([perf_trampoline], [yes], [
