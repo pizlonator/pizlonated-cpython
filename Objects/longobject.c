@@ -13,6 +13,7 @@
 
 #include <float.h>                // DBL_MANT_DIG
 #include <stddef.h>               // offsetof
+#include <stdfil.h>
 
 #include "clinic/longobject.c.h"
 /*[clinic input]
@@ -1314,6 +1315,12 @@ PyLong_FromUnsignedNativeBytes(const void* buffer, size_t n, int flags)
     return _PyLong_FromByteArray((const unsigned char *)buffer, n, little_endian, 0);
 }
 
+static zexact_ptrtable* ptrtable;
+static void construct_ptrtable(void) __attribute__((constructor));
+static void construct_ptrtable(void)
+{
+    ptrtable = zexact_ptrtable_new();
+}
 
 /* Create a new int object from a C pointer */
 
@@ -1321,7 +1328,7 @@ PyObject *
 PyLong_FromVoidPtr(void *p)
 {
 #if SIZEOF_VOID_P <= SIZEOF_LONG || defined(__PIZLONATOR_WAS_HERE__)
-    return PyLong_FromUnsignedLong((unsigned long)(uintptr_t)p);
+    return PyLong_FromUnsignedLong((unsigned long)(uintptr_t)zexact_ptrtable_encode(ptrtable, p));
 #else
 
 #if SIZEOF_LONG_LONG < SIZEOF_VOID_P
@@ -1364,7 +1371,7 @@ PyLong_AsVoidPtr(PyObject *vv)
 
     if (x == -1 && PyErr_Occurred())
         return NULL;
-    return (void *)x;
+    return (void *)zexact_ptrtable_decode(ptrtable, x);
 }
 
 /* Initial long long support by Chris Herborth (chrish@qnx.com), later
